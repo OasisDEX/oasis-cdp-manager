@@ -5,7 +5,7 @@ import "./GetCdps.sol";
 
 contract FakeUser {
     function doGive(
-        DssCdpManager manager,
+        OasisCdpManager manager,
         uint cdp,
         address dst
     ) public {
@@ -13,7 +13,7 @@ contract FakeUser {
     }
 
     function doFrob(
-        DssCdpManager manager,
+        OasisCdpManager manager,
         uint cdp,
         int dink,
         int dart
@@ -22,15 +22,15 @@ contract FakeUser {
     }
 }
 
-contract DssCdpManagerTest is DssDeployTestBase {
-    DssCdpManager manager;
+contract OasisCdpManagerTest is DssDeployTestBase {
+    OasisCdpManager manager;
     GetCdps getCdps;
     FakeUser user;
 
     function setUp() public {
         super.setUp();
         deploy();
-        manager = new DssCdpManager(address(vat));
+        manager = new OasisCdpManager(address(vat));
         getCdps = new GetCdps();
         user = new FakeUser();
     }

@@ -17,7 +17,7 @@ contract UrnHandler {
     }
 }
 
-contract DssCdpManager is DSNote {
+contract OasisCdpManager is DSNote {
     address                   public vat;
     uint                      public cdpi;      // Auto incremental
     mapping (uint => address) public urns;      // CDPId => UrnHandler
