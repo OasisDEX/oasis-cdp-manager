@@ -1,49 +1,48 @@
 pragma solidity >= 0.5.0;
 
 import { DssDeployTestBase } from "dss-deploy/DssDeploy.t.base.sol";
-import "./GetCdps.sol";
+import "./OasisCdpManager.sol";
 
 contract FakeUser {
     function doGive(
         OasisCdpManager manager,
-        uint cdp,
-        address dst
+        address urn,
+        address dst,
+        bytes32 ilk
     ) public {
-        manager.give(cdp, dst);
+        manager.give(urn, dst, ilk);
     }
 
     function doFrob(
         OasisCdpManager manager,
-        uint cdp,
+        address urn,
+        bytes32 ilk,
         int dink,
         int dart
     ) public {
-        manager.frob(cdp, dink, dart);
+        manager.frob(urn, ilk, dink, dart);
     }
 }
 
 contract OasisCdpManagerTest is DssDeployTestBase {
     OasisCdpManager manager;
-    GetCdps getCdps;
     FakeUser user;
 
     function setUp() public {
         super.setUp();
         deploy();
         manager = new OasisCdpManager(address(vat));
-        getCdps = new GetCdps();
         user = new FakeUser();
     }
 
     function testOpenCDP() public {
-        uint cdp = manager.open("ETH");
-        assertEq(cdp, 1);
-        assertEq(vat.can(address(bytes20(manager.urns(cdp))), address(manager)), 1);
+        address cdp = manager.open("ETH");
+        assertEq(vat.can(manager.urns(address(this), "ETH"), address(manager)), 1);
         assertEq(manager.owns(cdp), address(this));
     }
 
     function testOpenCDPOtherAddress() public {
-        uint cdp = manager.open("ETH", address(123));
+        address cdp = manager.open("ETH", address(123));
         assertEq(manager.owns(cdp), address(123));
     }
 
@@ -51,195 +50,93 @@ contract OasisCdpManagerTest is DssDeployTestBase {
         manager.open("ETH", address(0));
     }
 
+    function testFailOpenOverride() public {
+        manager.open("ETH", address(123));
+        manager.open("ETH", address(123));
+    }
+
     function testGiveCDP() public {
-        uint cdp = manager.open("ETH");
-        manager.give(cdp, address(123));
+        address cdp = manager.open("ETH");
+        manager.give(cdp, address(123), "ETH");
         assertEq(manager.owns(cdp), address(123));
     }
 
     function testGiveAllowed() public {
-        uint cdp = manager.open("ETH");
+        address cdp = manager.open("ETH");
         manager.allow(cdp, address(user), 1);
-        user.doGive(manager, cdp, address(123));
+        user.doGive(manager, cdp, address(123), "ETH");
         assertEq(manager.owns(cdp), address(123));
     }
 
+    function testGiveManyTimes() public {
+        address cdp = manager.open("ETH");
+        manager.give(cdp, address(user), "ETH");
+        user.doFrob(manager, cdp, "ETH", 0, 0);
+        user.doGive(manager, cdp, address(this), "ETH");
+        manager.frob(cdp, "ETH", 0, 0);
+    }
+
     function testFailGiveNotAllowed() public {
-        uint cdp = manager.open("ETH");
-        user.doGive(manager, cdp, address(123));
+        address cdp = manager.open("ETH");
+        user.doGive(manager, cdp, address(123), "ETH");
     }
 
     function testFailGiveNotAllowed2() public {
-        uint cdp = manager.open("ETH");
+        address cdp = manager.open("ETH");
         manager.allow(cdp, address(user), 1);
         manager.allow(cdp, address(user), 0);
-        user.doGive(manager, cdp, address(123));
+        user.doGive(manager, cdp, address(123), "ETH");
     }
 
     function testFailGiveNotAllowed3() public {
-        uint cdp = manager.open("ETH");
-        uint cdp2 = manager.open("ETH");
+        address cdp = manager.open("ETH");
+        address cdp2 = manager.open("ETH");
         manager.allow(cdp2, address(user), 1);
-        user.doGive(manager, cdp, address(123));
+        user.doGive(manager, cdp, address(123), "ETH");
     }
 
     function testFailGiveToZeroAddress() public {
-        uint cdp = manager.open("ETH");
-        manager.give(cdp, address(0));
+        address cdp = manager.open("ETH");
+        manager.give(cdp, address(0), "ETH");
     }
 
     function testFailGiveToSameOwner() public {
-        uint cdp = manager.open("ETH");
-        manager.give(cdp, address(this));
+        address cdp = manager.open("ETH");
+        manager.give(cdp, address(this), "ETH");
     }
 
-    function testDoubleLinkedList() public {
-        uint cdp1 = manager.open("ETH");
-        uint cdp2 = manager.open("ETH");
-        uint cdp3 = manager.open("ETH");
-
-        uint cdp4 = manager.open("ETH", address(user));
-        uint cdp5 = manager.open("ETH", address(user));
-        uint cdp6 = manager.open("ETH", address(user));
-        uint cdp7 = manager.open("ETH", address(user));
-
-        assertEq(manager.count(address(this)), 3);
-        assertEq(manager.first(address(this)), cdp1);
-        assertEq(manager.last(address(this)), cdp3);
-        (uint prev, uint next) = manager.list(cdp1);
-        assertEq(prev, 0);
-        assertEq(next, cdp2);
-        (prev, next) = manager.list(cdp2);
-        assertEq(prev, cdp1);
-        assertEq(next, cdp3);
-        (prev, next) = manager.list(cdp3);
-        assertEq(prev, cdp2);
-        assertEq(next, 0);
-
-        assertEq(manager.count(address(user)), 4);
-        assertEq(manager.first(address(user)), cdp4);
-        assertEq(manager.last(address(user)), cdp7);
-        (prev, next) = manager.list(cdp4);
-        assertEq(prev, 0);
-        assertEq(next, cdp5);
-        (prev, next) = manager.list(cdp5);
-        assertEq(prev, cdp4);
-        assertEq(next, cdp6);
-        (prev, next) = manager.list(cdp6);
-        assertEq(prev, cdp5);
-        assertEq(next, cdp7);
-        (prev, next) = manager.list(cdp7);
-        assertEq(prev, cdp6);
-        assertEq(next, 0);
-
-        manager.give(cdp2, address(user));
-
-        assertEq(manager.count(address(this)), 2);
-        assertEq(manager.first(address(this)), cdp1);
-        assertEq(manager.last(address(this)), cdp3);
-        (prev, next) = manager.list(cdp1);
-        assertEq(next, cdp3);
-        (prev, next) = manager.list(cdp3);
-        assertEq(prev, cdp1);
-
-        assertEq(manager.count(address(user)), 5);
-        assertEq(manager.first(address(user)), cdp4);
-        assertEq(manager.last(address(user)), cdp2);
-        (prev, next) = manager.list(cdp7);
-        assertEq(next, cdp2);
-        (prev, next) = manager.list(cdp2);
-        assertEq(prev, cdp7);
-        assertEq(next, 0);
-
-        user.doGive(manager, cdp2, address(this));
-
-        assertEq(manager.count(address(this)), 3);
-        assertEq(manager.first(address(this)), cdp1);
-        assertEq(manager.last(address(this)), cdp2);
-        (prev, next) = manager.list(cdp3);
-        assertEq(next, cdp2);
-        (prev, next) = manager.list(cdp2);
-        assertEq(prev, cdp3);
-        assertEq(next, 0);
-
-        assertEq(manager.count(address(user)), 4);
-        assertEq(manager.first(address(user)), cdp4);
-        assertEq(manager.last(address(user)), cdp7);
-        (prev, next) = manager.list(cdp7);
-        assertEq(next, 0);
-
-        manager.give(cdp1, address(user));
-        assertEq(manager.count(address(this)), 2);
-        assertEq(manager.first(address(this)), cdp3);
-        assertEq(manager.last(address(this)), cdp2);
-
-        manager.give(cdp2, address(user));
-        assertEq(manager.count(address(this)), 1);
-        assertEq(manager.first(address(this)), cdp3);
-        assertEq(manager.last(address(this)), cdp3);
-
-        manager.give(cdp3, address(user));
-        assertEq(manager.count(address(this)), 0);
-        assertEq(manager.first(address(this)), 0);
-        assertEq(manager.last(address(this)), 0);
+    function testFailInvalidIlk() public {
+        address cdp = manager.open("ETH");
+        manager.give(cdp, address(123), "ZZZ");
     }
 
-    function testGetCdpsAsc() public {
-        uint cdp1 = manager.open("ETH");
-        uint cdp2 = manager.open("REP");
-        uint cdp3 = manager.open("GOLD");
-
-        (uint[] memory ids,, bytes32[] memory ilks) = getCdps.getCdpsAsc(address(manager), address(this));
-        assertEq(ids.length, 3);
-        assertEq(ids[0], cdp1);
-        assertEq32(ilks[0], bytes32("ETH"));
-        assertEq(ids[1], cdp2);
-        assertEq32(ilks[1], bytes32("REP"));
-        assertEq(ids[2], cdp3);
-        assertEq32(ilks[2], bytes32("GOLD"));
-
-        manager.give(cdp2, address(user));
-        (ids,, ilks) = getCdps.getCdpsAsc(address(manager), address(this));
-        assertEq(ids.length, 2);
-        assertEq(ids[0], cdp1);
-        assertEq32(ilks[0], bytes32("ETH"));
-        assertEq(ids[1], cdp3);
-        assertEq32(ilks[1], bytes32("GOLD"));
+    function testFailOverride() public {
+        address cdp = manager.open("ETH");
+        manager.open("ETH", address(123));
+        manager.give(cdp, address(123), "ETH");
     }
 
-    function testGetCdpsDesc() public {
-        uint cdp1 = manager.open("ETH");
-        uint cdp2 = manager.open("REP");
-        uint cdp3 = manager.open("GOLD");
+    function testFailGiveResetAllowances() public {
+        FakeUser tester = new FakeUser();
+        address cdp = manager.open("ETH");
 
-        (uint[] memory ids,, bytes32[] memory ilks) = getCdps.getCdpsDesc(address(manager), address(this));
-        assertEq(ids.length, 3);
-        assertEq(ids[0], cdp3);
-        assertTrue(ilks[0] == bytes32("GOLD"));
-        assertEq(ids[1], cdp2);
-        assertTrue(ilks[1] == bytes32("REP"));
-        assertEq(ids[2], cdp1);
-        assertTrue(ilks[2] == bytes32("ETH"));
+        manager.allow(cdp, address(tester), 1);
+        tester.doFrob(manager, cdp, "ETH", 0, 0);
 
-        manager.give(cdp2, address(user));
-        (ids,, ilks) = getCdps.getCdpsDesc(address(manager), address(this));
-        assertEq(ids.length, 2);
-        assertEq(ids[0], cdp3);
-        assertTrue(ilks[0] == bytes32("GOLD"));
-        assertEq(ids[1], cdp1);
-        assertTrue(ilks[1] == bytes32("ETH"));
+        manager.give(cdp, address(user), "ETH");
+        tester.doFrob(manager, cdp, "ETH", 0, 0);
     }
 
     function testFrob() public {
-        uint cdp = manager.open("ETH");
+        address cdp = manager.open("ETH");
         weth.deposit.value(1 ether)();
         weth.approve(address(ethJoin), 1 ether);
-        ethJoin.join(manager.urns(cdp), 1 ether);
-        manager.frob(cdp, 1 ether, 50 ether);
-        assertEq(vat.dai(manager.urns(cdp)), 50 ether * ONE);
+        ethJoin.join(manager.urns(address(this), "ETH"), 1 ether);
+        manager.frob(cdp, "ETH", 1 ether, 50 ether);
+        assertEq(vat.dai(manager.urns(address(this), "ETH")), 50 ether * ONE);
         assertEq(vat.dai(address(this)), 0);
         manager.move(cdp, address(this), 50 ether * ONE);
-        assertEq(vat.dai(manager.urns(cdp)), 0);
+        assertEq(vat.dai(manager.urns(address(this), "ETH")), 0);
         assertEq(vat.dai(address(this)), 50 ether * ONE);
         assertEq(dai.balanceOf(address(this)), 0);
         vat.hope(address(daiJoin));
@@ -248,58 +145,58 @@ contract OasisCdpManagerTest is DssDeployTestBase {
     }
 
     function testFrobDaiOtherDst() public {
-        uint cdp = manager.open("ETH");
+        address cdp = manager.open("ETH");
         weth.deposit.value(1 ether)();
         weth.approve(address(ethJoin), 1 ether);
-        ethJoin.join(manager.urns(cdp), 1 ether);
-        manager.frob(cdp, address(this), 1 ether, 50 ether);
-        assertEq(vat.dai(manager.urns(cdp)), 0);
+        ethJoin.join(manager.urns(address(this), "ETH"), 1 ether);
+        manager.frob(cdp, address(this), "ETH", 1 ether, 50 ether);
+        assertEq(vat.dai(manager.urns(address(this), "ETH")), 0);
         assertEq(vat.dai(address(this)), 50 ether * ONE);
     }
 
     function testFrobGemOtherDst() public {
-        uint cdp = manager.open("ETH");
+        address cdp = manager.open("ETH");
         weth.deposit.value(1 ether)();
         weth.approve(address(ethJoin), 1 ether);
-        ethJoin.join(manager.urns(cdp), 1 ether);
-        manager.frob(cdp, 1 ether, 50 ether);
-        assertEq(vat.gem("ETH", manager.urns(cdp)), 0);
+        ethJoin.join(manager.urns(address(this), "ETH"), 1 ether);
+        manager.frob(cdp, "ETH", 1 ether, 50 ether);
+        assertEq(vat.gem("ETH", manager.urns(address(this), "ETH")), 0);
         assertEq(vat.gem("ETH", address(this)), 0);
-        manager.frob(cdp, address(this), -int(1 ether), -int(50 ether));
-        assertEq(vat.gem("ETH", manager.urns(cdp)), 0);
+        manager.frob(cdp, address(this), "ETH", -int(1 ether), -int(50 ether));
+        assertEq(vat.gem("ETH", manager.urns(address(this), "ETH")), 0);
         assertEq(vat.gem("ETH", address(this)), 1 ether);
     }
 
     function testFrobAllowed() public {
-        uint cdp = manager.open("ETH");
+        address cdp = manager.open("ETH");
         weth.deposit.value(1 ether)();
         weth.approve(address(ethJoin), 1 ether);
-        ethJoin.join(manager.urns(cdp), 1 ether);
+        ethJoin.join(manager.urns(address(this), "ETH"), 1 ether);
         manager.allow(cdp, address(user), 1);
-        user.doFrob(manager, cdp, 1 ether, 50 ether);
-        assertEq(vat.dai(manager.urns(cdp)), 50 ether * ONE);
+        user.doFrob(manager, cdp, "ETH", 1 ether, 50 ether);
+        assertEq(vat.dai(manager.urns(address(this), "ETH")), 50 ether * ONE);
     }
 
     function testFailFrobNotAllowed() public {
-        uint cdp = manager.open("ETH");
+        address cdp = manager.open("ETH");
         weth.deposit.value(1 ether)();
         weth.approve(address(ethJoin), 1 ether);
-        ethJoin.join(manager.urns(cdp), 1 ether);
-        user.doFrob(manager, cdp, 1 ether, 50 ether);
+        ethJoin.join(manager.urns(address(this), "ETH"), 1 ether);
+        user.doFrob(manager, cdp, "ETH", 1 ether, 50 ether);
     }
 
     function testFrobGetCollateralBack() public {
-        uint cdp = manager.open("ETH");
+        address cdp = manager.open("ETH");
         weth.deposit.value(1 ether)();
         weth.approve(address(ethJoin), 1 ether);
-        ethJoin.join(manager.urns(cdp), 1 ether);
-        manager.frob(cdp, 1 ether, 50 ether);
-        manager.frob(cdp, -int(1 ether), -int(50 ether));
+        ethJoin.join(manager.urns(address(this), "ETH"), 1 ether);
+        manager.frob(cdp, "ETH", 1 ether, 50 ether);
+        manager.frob(cdp, "ETH", -int(1 ether), -int(50 ether));
         assertEq(vat.dai(address(this)), 0);
-        assertEq(vat.gem("ETH", manager.urns(cdp)), 1 ether);
+        assertEq(vat.gem("ETH", manager.urns(address(this), "ETH")), 1 ether);
         assertEq(vat.gem("ETH", address(this)), 0);
-        manager.flux(cdp, address(this), 1 ether);
-        assertEq(vat.gem("ETH", manager.urns(cdp)), 0);
+        manager.flux(cdp, address(this), "ETH", 1 ether);
+        assertEq(vat.gem("ETH", manager.urns(address(this), "ETH")), 0);
         assertEq(vat.gem("ETH", address(this)), 1 ether);
         uint prevBalance = address(this).balance;
         ethJoin.exit(address(this), 1 ether);
@@ -308,25 +205,25 @@ contract OasisCdpManagerTest is DssDeployTestBase {
     }
 
     function testGetWrongCollateralBack() public {
-        uint cdp = manager.open("ETH");
+        address cdp = manager.open("ETH");
         col.mint(1 ether);
         col.approve(address(colJoin), 1 ether);
-        colJoin.join(manager.urns(cdp), 1 ether);
-        assertEq(vat.gem("COL", manager.urns(cdp)), 1 ether);
+        colJoin.join(manager.urns(address(this), "ETH"), 1 ether);
+        assertEq(vat.gem("COL", manager.urns(address(this), "ETH")), 1 ether);
         assertEq(vat.gem("COL", address(this)), 0);
-        manager.flux("COL", cdp, address(this), 1 ether);
-        assertEq(vat.gem("COL", manager.urns(cdp)), 0);
+        manager.flux(cdp, address(this), "COL", 1 ether);
+        assertEq(vat.gem("COL", manager.urns(address(this), "ETH")), 0);
         assertEq(vat.gem("COL", address(this)), 1 ether);
     }
 
     function testQuit() public {
-        uint cdp = manager.open("ETH");
+        address cdp = manager.open("ETH");
         weth.deposit.value(1 ether)();
         weth.approve(address(ethJoin), 1 ether);
-        ethJoin.join(manager.urns(cdp), 1 ether);
-        manager.frob(cdp, 1 ether, 50 ether);
+        ethJoin.join(manager.urns(address(this), "ETH"), 1 ether);
+        manager.frob(cdp, "ETH", 1 ether, 50 ether);
 
-        (uint ink, uint art) = vat.urns("ETH", manager.urns(cdp));
+        (uint ink, uint art) = vat.urns("ETH", manager.urns(address(this), "ETH"));
         assertEq(ink, 1 ether);
         assertEq(art, 50 ether);
         (ink, art) = vat.urns("ETH", address(this));
@@ -334,8 +231,8 @@ contract OasisCdpManagerTest is DssDeployTestBase {
         assertEq(art, 0);
 
         vat.hope(address(manager));
-        manager.quit(cdp, address(this));
-        (ink, art) = vat.urns("ETH", manager.urns(cdp));
+        manager.quit(cdp, address(this), "ETH");
+        (ink, art) = vat.urns("ETH", manager.urns(address(this), "ETH"));
         assertEq(ink, 0);
         assertEq(art, 0);
         (ink, art) = vat.urns("ETH", address(this));
