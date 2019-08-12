@@ -1,7 +1,7 @@
 pragma solidity >= 0.5.0;
 
 import { DssDeployTestBase } from "dss-deploy/DssDeploy.t.base.sol";
-import "./TestableOasisCdpManager.sol";
+import "./OasisCdpManager.sol";
 
 contract FakeUser {
     function doFrob(
@@ -16,13 +16,13 @@ contract FakeUser {
 }
 
 contract OasisCdpManagerTest is DssDeployTestBase {
-    TestableOasisCdpManager manager;
+    OasisCdpManager manager;
     FakeUser user;
 
     function setUp() public {
         super.setUp();
         deploy();
-        manager = new TestableOasisCdpManager(address(vat));
+        manager = new OasisCdpManager(address(vat));
         user = new FakeUser();
     }
 
