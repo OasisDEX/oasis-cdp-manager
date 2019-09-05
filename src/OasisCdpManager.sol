@@ -103,6 +103,19 @@ contract OasisCdpManager is DSNote {
         VatLike(vat).flux(ilk, urn, dst, wad);
     }
 
+    // Transfer wad amount of cdp collateral from the cdp address to a dst address.
+    // This function has the purpose to take away collateral from the system that doesn't correspond to the cdp but was sent there wrongly.
+    function flux(
+        address usr,
+        bytes32 usrIlk,
+        bytes32 ilk,
+        address dst,
+        uint wad
+    ) public note isAllowed(usr) {
+        address urn = urns[usr][usrIlk];
+        VatLike(vat).flux(ilk, urn, dst, wad);
+    }
+
     // Transfer wad amount of DAI from the cdp address to a dst address.
     function move(
         address usr,

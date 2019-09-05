@@ -117,4 +117,16 @@ contract OasisCdpManagerTest is DssDeployTestBase {
         assertEq(address(this).balance, prevBalance + 1 ether);
     }
 
+    function testGetWrongCollateralBack() public {
+        manager.open("ETH");
+        col.mint(1 ether);
+        col.approve(address(colJoin), 1 ether);
+        colJoin.join(manager.urns(address(this), "ETH"), 1 ether);
+        assertEq(vat.gem("COL", manager.urns(address(this), "ETH")), 1 ether);
+        assertEq(vat.gem("COL", address(this)), 0);
+        manager.flux(address(this), "ETH", "COL", address(this), 1 ether);
+        assertEq(vat.gem("COL", manager.urns(address(this), "ETH")), 0);
+        assertEq(vat.gem("COL", address(this)), 1 ether);
+    }
+
 }
