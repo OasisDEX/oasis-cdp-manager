@@ -1,6 +1,6 @@
 pragma solidity >= 0.5.0;
 
-import { DssDeployTestBase } from "dss-deploy/DssDeploy.t.base.sol";
+import { DssDeployTestBase, Vat } from "dss-deploy/DssDeploy.t.base.sol";
 import "./OasisCdpManager.sol";
 
 contract FakeUser {
@@ -12,6 +12,13 @@ contract FakeUser {
         int dart
     ) public {
         manager.frob(usr, ilk, dink, dart);
+    }
+
+    function doHope(
+        Vat vat,
+        address usr
+    ) public {
+        vat.hope(usr);
     }
 }
 
@@ -127,6 +134,48 @@ contract OasisCdpManagerTest is DssDeployTestBase {
         manager.flux(address(this), "ETH", "COL", address(this), 1 ether);
         assertEq(vat.gem("COL", manager.urns(address(this), "ETH")), 0);
         assertEq(vat.gem("COL", address(this)), 1 ether);
+    }
+
+    function testQuit() public {
+        manager.open("ETH");
+        weth.deposit.value(1 ether)();
+        weth.approve(address(ethJoin), 1 ether);
+        ethJoin.join(manager.urns(address(this), "ETH"), 1 ether);
+        manager.frob(address(this), "ETH", 1 ether, 50 ether);
+
+        (uint ink, uint art) = vat.urns("ETH", manager.urns(address(this), "ETH"));
+        assertEq(ink, 1 ether);
+        assertEq(art, 50 ether);
+        (ink, art) = vat.urns("ETH", address(this));
+        assertEq(ink, 0);
+        assertEq(art, 0);
+
+        vat.hope(address(manager));
+        manager.quit(address(this), "ETH", address(this));
+        vat.urns("ETH", manager.urns(address(this), "ETH"));
+        assertEq(ink, 0);
+        assertEq(art, 0);
+        (ink, art) = vat.urns("ETH", address(this));
+        assertEq(ink, 1 ether);
+        assertEq(art, 50 ether);
+    }
+
+    function testFailQuitOtherDst() public {
+        manager.open("ETH");
+        weth.deposit.value(1 ether)();
+        weth.approve(address(ethJoin), 1 ether);
+        ethJoin.join(manager.urns(address(this), "ETH"), 1 ether);
+        manager.frob(address(this), "ETH", 1 ether, 50 ether);
+
+        (uint ink, uint art) = vat.urns("ETH", manager.urns(address(this), "ETH"));
+        assertEq(ink, 1 ether);
+        assertEq(art, 50 ether);
+        (ink, art) = vat.urns("ETH", address(this));
+        assertEq(ink, 0);
+        assertEq(art, 0);
+
+        user.doHope(vat, address(manager));
+        manager.quit(address(this), "ETH", address(user));
     }
 
 }

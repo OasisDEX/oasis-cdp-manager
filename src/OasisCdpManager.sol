@@ -33,6 +33,11 @@ contract OasisCdpManager is DSNote {
         _;
     }
 
+    function toInt(uint x) internal pure returns (int y) {
+      y = int(x);
+      require(y >= 0);
+    }
+
     constructor(address vat_) public {
         vat = vat_;
     }
@@ -125,6 +130,23 @@ contract OasisCdpManager is DSNote {
     ) public note isAllowed(usr) {
         address urn = urns[usr][ilk];
         VatLike(vat).move(urn, dst, rad);
+    }
+
+    // Quit the system, migrating the cdp (ink, art) to a different dst urn
+    function quit(
+        address usr,
+        bytes32 ilk,
+        address dst
+    ) public note isAllowed(usr) isAllowed(dst) {
+        address urn = urns[usr][ilk];
+        (uint ink, uint art) = VatLike(vat).urns(ilk, urn);
+        VatLike(vat).fork(
+            ilk,
+            urn,
+            dst,
+            toInt(ink),
+            toInt(art)
+        );
     }
 
 }
