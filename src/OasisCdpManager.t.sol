@@ -20,6 +20,18 @@ contract FakeUser {
     ) public {
         vat.hope(usr);
     }
+
+    function doVatFrob(
+        Vat vat,
+        bytes32 i,
+        address u,
+        address v,
+        address w,
+        int dink,
+        int dart
+    ) public {
+        vat.frob(i, u, v, w, dink, dart);
+    }
 }
 
 contract OasisCdpManagerTest is DssDeployTestBase {
@@ -176,6 +188,45 @@ contract OasisCdpManagerTest is DssDeployTestBase {
 
         user.doHope(vat, address(manager));
         manager.quit(address(this), "ETH", address(user));
+    }
+
+    function testEnter() public {
+        weth.deposit.value(1 ether)();
+        weth.approve(address(ethJoin), 1 ether);
+        ethJoin.join(address(this), 1 ether);
+        vat.frob("ETH", address(this), address(this), address(this), 1 ether, 50 ether);
+        manager.open("ETH");
+
+        (uint ink, uint art) = vat.urns("ETH", manager.urns(address(this), "ETH"));
+        assertEq(ink, 0);
+        assertEq(art, 0);
+
+        (ink, art) = vat.urns("ETH", address(this));
+        assertEq(ink, 1 ether);
+        assertEq(art, 50 ether);
+
+        vat.hope(address(manager));
+        manager.enter(address(this), address(this), "ETH");
+
+        (ink, art) = vat.urns("ETH", manager.urns(address(this), "ETH"));
+        assertEq(ink, 1 ether);
+        assertEq(art, 50 ether);
+
+        (ink, art) = vat.urns("ETH", address(this));
+        assertEq(ink, 0);
+        assertEq(art, 0);
+    }
+
+    function testFailEnterOtherSrc() public {
+        weth.deposit.value(1 ether)();
+        weth.approve(address(ethJoin), 1 ether);
+        ethJoin.join(address(user), 1 ether);
+        user.doVatFrob(vat, "ETH", address(user), address(user), address(user), 1 ether, 50 ether);
+
+        manager.open("ETH");
+
+        user.doHope(vat, address(manager));
+        manager.enter(address(user), address(this), "ETH");
     }
 
 }

@@ -149,4 +149,21 @@ contract OasisCdpManager is DSNote {
         );
     }
 
+    // Import a position from src urn to the urn owned by cdp
+    function enter(
+        address src,
+        address usr,
+        bytes32 ilk
+    ) public note isAllowed(src) isAllowed(usr) {
+        (uint ink, uint art) = VatLike(vat).urns(ilk, src);
+        address urn = urns[usr][ilk];
+        VatLike(vat).fork(
+            ilk,
+            src,
+            urn,
+            toInt(ink),
+            toInt(art)
+        );
+    }
+
 }
