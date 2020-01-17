@@ -6,3 +6,6 @@
 	path = lib/dss-deploy
 	url = https://github.com/makerdao/dss-deploy
 	ignore = dirty
+[submodule "lib/ds-note"]
+	path = lib/ds-note
+	url = https://github.com/dapphub/ds-note
