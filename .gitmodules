@@ -9,3 +9,4 @@
 [submodule "lib/ds-note"]
 	path = lib/ds-note
 	url = https://github.com/dapphub/ds-note
+	ignore = dirty
