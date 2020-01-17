@@ -1,6 +1,7 @@
 pragma solidity >= 0.5.0;
 
 import "dss/lib.sol";
+import "ds-note/note.sol";
 
 contract VatLike {
     function urns(bytes32, address) public view returns (uint, uint);
