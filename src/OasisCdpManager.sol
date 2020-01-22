@@ -17,34 +17,24 @@ contract UrnHandler {
     }
 }
 
-contract OasisCdpManager is DSNote {
-    address                   public vat;
+contract OasisCdpManager is LibNote {
+    address public vat;
 
     mapping (
         address => mapping (
             bytes32 => address
         )
-    ) public urns;                              // Owner => Ilk => UrnHandler
+    ) public urns;  // Owner => Ilk => UrnHandler
 
-    event NewCdp(address indexed usr, address indexed own, bytes32 ilk, address urn);
-
-    modifier isAllowed(address usr) {
-        require(msg.sender == usr, "not-allowed");
-        _;
-    }
-
-    function toInt(uint x) internal pure returns (int y) {
-      y = int(x);
-      require(y >= 0);
-    }
+    event NewCdp(address indexed usr, bytes32 indexed ilk, address indexed urn);
 
     constructor(address vat_) public {
         vat = vat_;
     }
 
-    // Open a new cdp for the caller.
-    function open(bytes32 ilk) public {
-        open(ilk, msg.sender);
+    function toInt(uint x) internal pure returns (int y) {
+        y = int(x);
+        require(y >= 0);
     }
 
     // Open a new cdp for a given usr address.
@@ -57,17 +47,16 @@ contract OasisCdpManager is DSNote {
 
         address urn = address(new UrnHandler(vat));
         urns[usr][ilk] = urn;
-        emit NewCdp(msg.sender, usr, ilk, urn);
+        emit NewCdp(usr, ilk, urn);
     }
 
     // Frob the cdp keeping the generated DAI or collateral freed in the cdp urn address.
     function frob(
-        address usr,
         bytes32 ilk,
         int dink,
         int dart
-    ) public note isAllowed(usr) {
-        address urn = urns[usr][ilk];
+    ) public note {
+        address urn = urns[msg.sender][ilk];
         VatLike(vat).frob(
             ilk,
             urn,
@@ -80,71 +69,61 @@ contract OasisCdpManager is DSNote {
 
     // Transfer wad amount of cdp collateral from the cdp address to a dst address.
     function flux(
-        address usr,
         bytes32 ilk,
         address dst,
         uint wad
-    ) public note isAllowed(usr) {
-        address urn = urns[usr][ilk];
-        VatLike(vat).flux(ilk, urn, dst, wad);
+    ) public note {
+        VatLike(vat).flux(ilk, urns[msg.sender][ilk], dst, wad);
     }
 
     // Transfer wad amount of cdp collateral from the cdp address to a dst address.
     // This function has the purpose to take away collateral from the system that doesn't correspond to the cdp but was sent there wrongly.
     function flux(
-        address usr,
-        bytes32 usrIlk,
         bytes32 ilk,
+        bytes32 ilkExtract,
         address dst,
         uint wad
-    ) public note isAllowed(usr) {
-        address urn = urns[usr][usrIlk];
-        VatLike(vat).flux(ilk, urn, dst, wad);
+    ) public note {
+        VatLike(vat).flux(ilkExtract, urns[msg.sender][ilk], dst, wad);
     }
 
     // Transfer wad amount of DAI from the cdp address to a dst address.
     function move(
-        address usr,
         bytes32 ilk,
         address dst,
         uint rad
-    ) public note isAllowed(usr) {
-        address urn = urns[usr][ilk];
-        VatLike(vat).move(urn, dst, rad);
+    ) public note {
+        VatLike(vat).move(urns[msg.sender][ilk], dst, rad);
     }
 
-    // Quit the system, migrating the cdp (ink, art) to a different dst urn
+    // Quit the system, migrating the msg.sender cdp (ink, art) to a msg.sender urn
     function quit(
-        address usr,
-        bytes32 ilk,
-        address dst
-    ) public note isAllowed(usr) isAllowed(dst) {
-        address urn = urns[usr][ilk];
+        bytes32 ilk
+    ) public note {
+        address urn = urns[msg.sender][ilk];
         (uint ink, uint art) = VatLike(vat).urns(ilk, urn);
         VatLike(vat).fork(
             ilk,
             urn,
-            dst,
+            msg.sender,
             toInt(ink),
             toInt(art)
         );
     }
 
-    // Import a position from src urn to the urn owned by cdp
+    // Import a position from msg.sender urn to msg.sender cdp
     function enter(
-        address src,
-        address usr,
         bytes32 ilk
-    ) public note isAllowed(src) isAllowed(usr) {
-        (uint ink, uint art) = VatLike(vat).urns(ilk, src);
-        address urn = urns[usr][ilk];
+    ) public note {
+        address urn = urns[msg.sender][ilk];
+        require(urn != address(0), "not-existing-urn");
+        (uint ink, uint art) = VatLike(vat).urns(ilk, msg.sender);
         VatLike(vat).fork(
             ilk,
-            src,
+            msg.sender,
             urn,
             toInt(ink),
             toInt(art)
         );
     }
-
 }
