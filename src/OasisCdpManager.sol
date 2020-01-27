@@ -87,7 +87,7 @@ contract OasisCdpManager is LibNote {
         VatLike(vat).flux(ilkExtract, urns[msg.sender][ilk], dst, wad);
     }
 
-    // Transfer wad amount of DAI from the cdp address to a dst address.
+    // Transfer rad amount of DAI from the cdp address to a dst address.
     function move(
         bytes32 ilk,
         address dst,
