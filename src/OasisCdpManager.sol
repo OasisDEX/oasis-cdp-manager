@@ -87,6 +87,8 @@ contract OasisCdpManager is LibNote {
         address dst,
         uint wad
     ) public note {
+        // TODO: we may want to use a different note library here.  The current
+        // note library will not log all the arguments.
         VatLike(vat).flux(ilkExtract, urns[msg.sender][ilk], dst, wad);
     }
 
