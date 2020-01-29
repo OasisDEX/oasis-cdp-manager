@@ -37,18 +37,17 @@ contract OasisCdpManager is LibNote {
         require(y >= 0);
     }
 
-    // Open a new cdp for a given usr address.
+    // Open a new cdp for msg.sender address.
     function open(
         bytes32 ilk,
         address usr
     ) public returns (address urn) {
         require(usr != address(0), "usr-address-0");
-        require(urns[usr][ilk] == address(0), "cannot-override-urn");
-
+        require(urns[msg.sender][ilk] == address(0), "cannot-override-urn");
         urn = address(new UrnHandler(vat));
-        urns[usr][ilk] = urn;
+        urns[msg.sender][ilk] = urn;
 
-        emit NewCdp(usr, ilk, urn);
+        emit NewCdp(msg.sender, ilk, urn);
     }
 
     // Frob the cdp keeping the generated DAI or collateral freed in the cdp urn address.

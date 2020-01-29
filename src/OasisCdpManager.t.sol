@@ -36,31 +36,15 @@ contract OasisCdpManagerTest is DssDeployTestBase {
     }
 
     function testOpenCDP() public {
-        manager.open("ETH", address(this));
+        manager.open("ETH");
         assertEq(vat.can(manager.urns(address(this), "ETH"), address(manager)), 1);
         address urn = manager.urns(address(this), "ETH");
         if (urn == address(0))
             fail();
     }
 
-    function testOpenCDPOtherAddress() public {
-        manager.open("ETH", address(123));
-        address urn = manager.urns(address(123), "ETH");
-        if (urn == address(0))
-            fail();
-    }
-
-    function testFailOpenCDPZeroAddress() public {
-        manager.open("ETH", address(0));
-    }
-
-    function testFailOpenOverride() public {
-        manager.open("ETH", address(123));
-        manager.open("ETH", address(123));
-    }
-
     function testFrob() public {
-        manager.open("ETH", address(this));
+        manager.open("ETH");
         weth.deposit.value(1 ether)();
         weth.approve(address(ethJoin), 1 ether);
         ethJoin.join(manager.urns(address(this), "ETH"), 1 ether);
@@ -77,7 +61,7 @@ contract OasisCdpManagerTest is DssDeployTestBase {
     }
 
     function testFrobGetCollateralBack() public {
-        manager.open("ETH", address(this));
+        manager.open("ETH");
         weth.deposit.value(1 ether)();
         weth.approve(address(ethJoin), 1 ether);
         ethJoin.join(manager.urns(address(this), "ETH"), 1 ether);
@@ -96,7 +80,7 @@ contract OasisCdpManagerTest is DssDeployTestBase {
     }
 
     function testGetWrongCollateralBack() public {
-        manager.open("ETH", address(this));
+        manager.open("ETH");
         col.mint(1 ether);
         col.approve(address(colJoin), 1 ether);
         colJoin.join(manager.urns(address(this), "ETH"), 1 ether);
@@ -108,7 +92,7 @@ contract OasisCdpManagerTest is DssDeployTestBase {
     }
 
     function testQuit() public {
-        manager.open("ETH", address(this));
+        manager.open("ETH");
         weth.deposit.value(1 ether)();
         weth.approve(address(ethJoin), 1 ether);
         ethJoin.join(manager.urns(address(this), "ETH"), 1 ether);
@@ -136,7 +120,7 @@ contract OasisCdpManagerTest is DssDeployTestBase {
         weth.approve(address(ethJoin), 1 ether);
         ethJoin.join(address(this), 1 ether);
         vat.frob("ETH", address(this), address(this), address(this), 1 ether, 50 ether);
-        manager.open("ETH", address(this));
+        manager.open("ETH");
 
         (uint ink, uint art) = vat.urns("ETH", manager.urns(address(this), "ETH"));
         assertEq(ink, 0);
