@@ -1,6 +1,4 @@
-pragma solidity >= 0.5.0;
-
-import "dss/lib.sol";
+pragma solidity ^0.5.12;
 
 contract VatLike {
     function urns(bytes32, address) public view returns (uint, uint);
@@ -17,7 +15,55 @@ contract UrnHandler {
     }
 }
 
-contract OasisCdpManager is LibNote {
+contract OasisCdpManagerEvents {
+    event OpenEvent(
+        address indexed usr,
+        bytes32 indexed ilk,
+        address urn
+    );
+
+    event FrobEvent(
+        address indexed usr,
+        bytes32 indexed ilk,
+        address urn,
+        int dink,
+        int dart
+    );
+
+    event FluxEvent(
+        address indexed usr,
+        bytes32 indexed ilk,
+        address urn,
+        address dst,
+        uint wad
+    );
+
+    event MoveEvent(
+        address indexed usr,
+        bytes32 indexed ilk,
+        address urn,
+        address dst,
+        uint rad
+    );
+
+    event QuitEvent(
+        address indexed usr,
+        bytes32 indexed ilk,
+        address urn,
+        int dink,
+        int dart
+    );
+
+    event EnterEvent(
+        address indexed usr,
+        bytes32 indexed ilk,
+        address urn,
+        int dink,
+        int dart
+    );
+}
+
+contract OasisCdpManager is OasisCdpManagerEvents {
     address public vat;
 
     mapping (
@@ -25,8 +71,6 @@ contract OasisCdpManager is LibNote {
             bytes32 => address
         )
     ) public urns;  // Owner => Ilk => UrnHandler
-
-    event NewCdp(address indexed usr, bytes32 indexed ilk, address indexed urn);
 
     constructor(address vat_) public {
         vat = vat_;
@@ -44,8 +88,7 @@ contract OasisCdpManager is LibNote {
         require(urns[msg.sender][ilk] == address(0), "cannot-override-urn");
         urn = address(new UrnHandler(vat));
         urns[msg.sender][ilk] = urn;
-
-        emit NewCdp(msg.sender, ilk, urn);
+        emit OpenEvent(msg.sender, ilk, urn);
     }
 
     // Frob the cdp keeping the generated DAI or collateral freed in the cdp urn address.
@@ -53,7 +96,7 @@ contract OasisCdpManager is LibNote {
         bytes32 ilk,
         int dink,
         int dart
-    ) public note {
+    ) public {
         address urn = urns[msg.sender][ilk];
         VatLike(vat).frob(
             ilk,
@@ -63,6 +106,7 @@ contract OasisCdpManager is LibNote {
             dink,
             dart
         );
+        emit FrobEvent(msg.sender, ilk, urn, dink, dart);
     }
 
     // Transfer wad amount of cdp collateral from the cdp address to a dst address.
@@ -70,8 +114,9 @@ contract OasisCdpManager is LibNote {
         bytes32 ilk,
         address dst,
         uint wad
-    ) public note {
+    ) public {
         VatLike(vat).flux(ilk, urns[msg.sender][ilk], dst, wad);
+        emit FluxEvent(msg.sender, ilk, urns[msg.sender][ilk], dst, wad);
     }
 
     // Transfer wad amount of cdp collateral from the cdp address to a dst address.
@@ -81,10 +126,9 @@ contract OasisCdpManager is LibNote {
         bytes32 ilkExtract,
         address dst,
         uint wad
-    ) public note {
-        // TODO: we may want to use a different note library here.  The current
-        // note library will not log all the arguments.
+    ) public {
         VatLike(vat).flux(ilkExtract, urns[msg.sender][ilk], dst, wad);
+        emit FluxEvent(msg.sender, ilkExtract, urns[msg.sender][ilk], dst, wad);
     }
 
     // Transfer rad amount of DAI from the cdp address to a dst address.
@@ -92,14 +136,15 @@ contract OasisCdpManager is LibNote {
         bytes32 ilk,
         address dst,
         uint rad
-    ) public note {
+    ) public {
         VatLike(vat).move(urns[msg.sender][ilk], dst, rad);
+        emit MoveEvent(msg.sender, ilk, urns[msg.sender][ilk], dst, rad);
     }
 
     // Quit the system, migrating the msg.sender cdp (ink, art) to a msg.sender urn
     function quit(
         bytes32 ilk
-    ) public note {
+    ) public {
         address urn = urns[msg.sender][ilk];
         (uint ink, uint art) = VatLike(vat).urns(ilk, urn);
         VatLike(vat).fork(
@@ -109,12 +154,13 @@ contract OasisCdpManager is LibNote {
             toInt(ink),
             toInt(art)
         );
+        emit QuitEvent(msg.sender, ilk, urn, toInt(ink), toInt(art));
     }
 
     // Import a position from msg.sender urn to msg.sender cdp
     function enter(
         bytes32 ilk
-    ) public note {
+    ) public {
         address urn = urns[msg.sender][ilk];
         require(urn != address(0), "not-existing-urn");
         (uint ink, uint art) = VatLike(vat).urns(ilk, msg.sender);
@@ -125,5 +171,6 @@ contract OasisCdpManager is LibNote {
             toInt(ink),
             toInt(art)
         );
+        emit EnterEvent(msg.sender, ilk, urn, toInt(ink), toInt(art));
     }
 }
