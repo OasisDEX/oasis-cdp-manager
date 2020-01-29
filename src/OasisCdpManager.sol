@@ -39,10 +39,8 @@ contract OasisCdpManager is LibNote {
 
     // Open a new cdp for msg.sender address.
     function open(
-        bytes32 ilk,
-        address usr
+        bytes32 ilk
     ) public returns (address urn) {
-        require(usr != address(0), "usr-address-0");
         require(urns[msg.sender][ilk] == address(0), "cannot-override-urn");
         urn = address(new UrnHandler(vat));
         urns[msg.sender][ilk] = urn;
