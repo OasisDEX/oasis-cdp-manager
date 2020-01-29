@@ -115,8 +115,8 @@ contract OasisCdpManager is LibNote {
     function enter(
         bytes32 ilk
     ) public note {
-        address urn = urns[msg.sender][ilk];
-        require(urn != address(0), "not-existing-urn");
+        address urn = (urns[msg.sender][ilk] != address(0)) ? urns[msg.sender][ilk] : open(ilk);
+
         (uint ink, uint art) = VatLike(vat).urns(ilk, msg.sender);
         VatLike(vat).fork(
             ilk,

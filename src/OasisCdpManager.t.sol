@@ -142,4 +142,32 @@ contract OasisCdpManagerTest is DssDeployTestBase {
         assertEq(art, 0);
     }
 
+    function testEnterWithNewUrn() public {
+        weth.deposit.value(1 ether)();
+        weth.approve(address(ethJoin), 1 ether);
+        ethJoin.join(address(this), 1 ether);
+        vat.frob("ETH", address(this), address(this), address(this), 1 ether, 50 ether);
+
+        (uint ink, uint art) = vat.urns("ETH", manager.urns(address(this), "ETH"));
+        assertEq(manager.urns(address(this), "ETH"), address(0));
+        assertEq(ink, 0);
+        assertEq(art, 0);
+
+        (ink, art) = vat.urns("ETH", address(this));
+        assertEq(ink, 1 ether);
+        assertEq(art, 50 ether);
+
+        vat.hope(address(manager));
+        manager.enter("ETH");
+        if (manager.urns(address(this), "ETH") == address(0)) { fail(); }
+
+        (ink, art) = vat.urns("ETH", manager.urns(address(this), "ETH"));
+        assertEq(ink, 1 ether);
+        assertEq(art, 50 ether);
+
+        (ink, art) = vat.urns("ETH", address(this));
+        assertEq(ink, 0);
+        assertEq(art, 0);
+    }
+
 }
