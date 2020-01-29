@@ -40,14 +40,11 @@ contract OasisCdpManager is LibNote {
     // Open a new cdp for msg.sender address.
     function open(
         bytes32 ilk
-    ) public note returns (address urn) {
+    ) public returns (address urn) {
         require(urns[msg.sender][ilk] == address(0), "cannot-override-urn");
-
         urn = address(new UrnHandler(vat));
         urns[msg.sender][ilk] = urn;
 
-        // TODO: Decide if the note is enough.  If not, we should remove note
-        // and keep NewCdp().  Whatever we do, there is no need to log both.
         emit NewCdp(msg.sender, ilk, urn);
     }
 
