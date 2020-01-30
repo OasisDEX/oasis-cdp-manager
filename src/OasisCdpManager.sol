@@ -17,47 +17,47 @@ contract UrnHandler {
 
 contract OasisCdpManagerEvents {
     event OpenEvent(
-        address indexed usr,
-        bytes32 indexed ilk,
-        address urn
+        address usr,
+        bytes32 ilk,
+        address indexed urn
     );
 
     event FrobEvent(
-        address indexed usr,
-        bytes32 indexed ilk,
-        address urn,
+        address usr,
+        bytes32 ilk,
+        address indexed urn,
         int dink,
         int dart
     );
 
     event FluxEvent(
-        address indexed usr,
-        bytes32 indexed ilk,
-        address urn,
+        address usr,
+        bytes32 ilk,
+        address indexed urn,
         address dst,
         uint wad
     );
 
     event MoveEvent(
-        address indexed usr,
-        bytes32 indexed ilk,
-        address urn,
+        address usr,
+        bytes32 ilk,
+        address indexed urn,
         address dst,
         uint rad
     );
 
     event QuitEvent(
-        address indexed usr,
-        bytes32 indexed ilk,
-        address urn,
+        address usr,
+        bytes32 ilk,
+        address indexed urn,
         int dink,
         int dart
     );
 
     event EnterEvent(
-        address indexed usr,
-        bytes32 indexed ilk,
-        address urn,
+        address usr,
+        bytes32 ilk,
+        address indexed urn,
         int dink,
         int dart
     );
